@@ -1,0 +1,33 @@
+dist: xenial
+
+sudo: required
+
+language: python
+
+python:
+  - "3.6"
+
+services:
+  - docker
+
+git:
+  depth: 1
+
+addons:
+  apt:
+    update: true
+    packages:
+      - docker-ce
+
+env:
+  matrix:
+    - DOCKER_TAG=9.6
+    - DOCKER_TAG=10
+    - DOCKER_TAG=11
+    - DOCKER_TAG=latest
+
+install:
+  - pip install -r tests/ci-requirements.txt
+
+script:
+  - ./tests/test.py -v

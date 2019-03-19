@@ -1,0 +1,6 @@
+.git*
+.travis.yml
+.vscode
+LICENSE
+README.md
+tests
