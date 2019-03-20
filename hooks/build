@@ -6,17 +6,12 @@ test -n "$DOCKER_TAG"
 
 # Prepare build args
 commit="${GIT_SHA1:-$TRAVIS_COMMIT}"
-if [ "$DOCKER_TAG" == "latest" ]; then
-    base_tag="alpine"
-else
-    base_tag="$DOCKER_TAG-alpine"
-fi
 
 # To be configured via Docker Hub UI, all labels from postgres image targeting
 # this master branch
 time docker image build \
     --build-arg VCS_REF="$commit" \
     --build-arg BUILD_DATE="$(date --rfc-3339 ns)" \
-    --build-arg BASE_TAG="$base_tag" \
+    --build-arg BASE_TAG="$DOCKER_TAG" \
     --tag "tecnativa/postgres-autoconf:$DOCKER_TAG" \
     .

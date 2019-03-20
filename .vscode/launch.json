@@ -9,7 +9,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "env": {
-                "DOCKER_TAG": "latest",
+                "DOCKER_TAG": "alpine",
             },
         },
     ]
