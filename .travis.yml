@@ -21,10 +21,10 @@ addons:
 
 env:
   matrix:
-    - DOCKER_TAG=9.6
-    - DOCKER_TAG=10
-    - DOCKER_TAG=11
-    - DOCKER_TAG=latest
+    - DOCKER_TAG=9.6-alpine
+    - DOCKER_TAG=10-alpine
+    - DOCKER_TAG=11-alpine
+    - DOCKER_TAG=alpine
 
 install:
   - pip install -r tests/ci-requirements.txt
