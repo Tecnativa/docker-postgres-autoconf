@@ -66,7 +66,7 @@ def permissions_fix(filename):
 for key, filename in SUPPORTED_CERTS.items():
     full_path = os.path.join(CONF_FOLDER, filename)
     # Write PEM file if it came from env variable
-    if not os.path.exists(full_path) and filename in CERTS:
+    if not os.path.exists(full_path) and CERTS.get(filename):
         with open(full_path, "w") as cert_file:
             cert_file.write(CERTS[filename])
     if os.path.exists(full_path):
