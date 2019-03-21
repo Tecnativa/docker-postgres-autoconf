@@ -19,6 +19,10 @@ addons:
     packages:
       - docker-ce
 
+branches:
+  only:
+    - master
+
 env:
   matrix:
     - DOCKER_TAG=9.6-alpine
