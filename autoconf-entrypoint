@@ -101,14 +101,15 @@ for interface in netifaces.interfaces():
                     ))
 
 # Generate WAN auth configuration
-for user, db, cidr in product(WAN_USERS, WAN_DATABASES, WAN_CIDRS):
-    hba_conf.append(WAN_HBA_TPL.format(
-        connection=WAN_CONNECTION,
-        db=db,
-        user=user,
-        cidr=cidr,
-        meth=WAN_AUTH_METHOD,
-    ))
+if WAN_CONNECTION != "hostssl" or ssl_conf:
+    for user, db, cidr in product(WAN_USERS, WAN_DATABASES, WAN_CIDRS):
+        hba_conf.append(WAN_HBA_TPL.format(
+            connection=WAN_CONNECTION,
+            db=db,
+            user=user,
+            cidr=cidr,
+            meth=WAN_AUTH_METHOD,
+        ))
 
 # Write postgres configuration files
 with open(CONF_FILE, "w") as conf_file:

@@ -85,7 +85,7 @@ Method required to authenticate clients that connect from WAN.
 
 #### `WAN_CONNECTION`
 
-Connection type allowed for WAN connections.
+Connection type allowed for WAN connections. If it is `hostssl`, it will only have effect when the required certs are received.
 
 #### `WAN_DATABASES`
 
