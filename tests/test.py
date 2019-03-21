@@ -6,6 +6,7 @@ import unittest
 
 from plumbum import FG, local
 from plumbum.cmd import cat, docker
+from plumbum.commands.processes import ProcessExecutionError
 
 # Make sure all paths are relative to tests dir
 local.cwd.chdir(os.path.dirname(__file__))
@@ -16,7 +17,8 @@ class PostgresAutoconfCase(unittest.TestCase):
     """Test behavior for this docker image"""
     def setUp(self):
         with local.cwd(local.cwd / ".."):
-            local["./hooks/build"]()
+            print("Building image")
+            local["./hooks/build"] & FG
         docker("network", "create", "lan")
         docker("network", "create", "wan")
         self.version = os.environ["DOCKER_TAG"]
@@ -32,19 +34,19 @@ class PostgresAutoconfCase(unittest.TestCase):
         try:
             print("Postgres container logs:")
             docker["container", "logs", self.postgres_container] & FG
-            docker("container", "stop", self.postgres_container)
-            docker("container", "rm", self.postgres_container)
+            docker["container", "stop", self.postgres_container] & FG
+            docker["container", "rm", self.postgres_container] & FG
         except AttributeError:
             pass  # No postgres daemon
         docker("network", "rm", "lan", "wan")
         return super().tearDown()
 
-    def generate_certs(self):
+    def _generate_certs(self):
         """Generate certificates for testing the image."""
         certgen("example.com", "test_user")
 
-    def check_cert_config(self):
-        """Check that the cert config is OK."""
+    def _check_local_connection(self):
+        """Check that local connection works fine."""
         # The 1st test could fail while postgres boots
         for attempt in range(10):
             try:
@@ -65,31 +67,40 @@ class PostgresAutoconfCase(unittest.TestCase):
                     raise
             else:
                 continue
-        run = docker[
+
+    def _check_password_auth(self, host=None):
+        """Test connection with password auth work fine."""
+        if not host:
+            # Connect via LAN by default
+            host = self.postgres_container[:12]
+        self.assertEqual("1\n", docker(
             "container", "run",
-        ]
-        # Test LAN connection with password auth works fine
-        self.assertEqual("1\n", run(
             "--network", "lan",
             "-e", "PGDATABASE=test_db",
             "-e", "PGPASSWORD=test_password",
             "-e", "PGSSLMODE=disable",
             "-e", "PGUSER=test_user",
             self.image, "psql",
-            "--host", self.postgres_container[:12],
+            "--host", host,
             "--command", "SELECT 1",
             "--no-align",
             "--tuples-only",
         ))
-        # Attach a new network to mock a WAN connection
+
+    def _connect_wan_network(self, alias="example.com"):
+        """Bind a new network, to imitate WAN connections."""
         docker(
             "network", "connect",
-            "--alias", "example.com",
+            "--alias", alias,
             "wan",
             self.postgres_container,
         )
-        # Test WAN connection with cert auth works fine
-        self.assertEqual("1\n", run(
+
+    def _check_cert_auth(self):
+        """Test connection with cert auth work fine."""
+        # Test connection with cert auth works fine
+        self.assertEqual("1\n", docker(
+            "container", "run",
             "--network", "wan",
             "-e", "PGDATABASE=test_db",
             "-e", "PGSSLCERT=/certs/client.cert.pem",
@@ -109,7 +120,7 @@ class PostgresAutoconfCase(unittest.TestCase):
         """Test server enables cert authentication through env vars."""
         with local.tempdir() as tdir:
             with local.cwd(tdir):
-                self.generate_certs()
+                self._generate_certs()
                 certs_var = {name: cat(name) for name in self.cert_files}
                 self.postgres_container = docker(
                     "container", "run",
@@ -120,13 +131,16 @@ class PostgresAutoconfCase(unittest.TestCase):
                     "-e", "POSTGRES_USER=test_user",
                     self.image,
                 ).strip()
-                self.check_cert_config()
+                self._check_local_connection()
+                self._check_password_auth()
+                self._connect_wan_network()
+                self._check_cert_auth()
 
     def test_server_certs_mount(self):
         """Test server enables cert authentication through file mounts."""
         with local.tempdir() as tdir:
             with local.cwd(tdir):
-                self.generate_certs()
+                self._generate_certs()
                 cert_vols = [
                     "-v{0}/{1}:/etc/postgres/{1}".format(local.cwd, cert)
                     for cert in [
@@ -144,7 +158,65 @@ class PostgresAutoconfCase(unittest.TestCase):
                     *cert_vols,
                     self.image,
                 ).strip()
-                self.check_cert_config()
+                self._check_local_connection()
+                self._check_password_auth()
+                self._connect_wan_network()
+                self._check_cert_auth()
+
+    def test_no_certs_lan(self):
+        """Normal configuration without certs works fine."""
+        self.postgres_container = docker(
+            "container", "run", "-d",
+            "--network", "lan",
+            "-e", "POSTGRES_DB=test_db",
+            "-e", "POSTGRES_PASSWORD=test_password",
+            "-e", "POSTGRES_USER=test_user",
+            self.image,
+        ).strip()
+        self._check_local_connection()
+        self._check_password_auth()
+        self._connect_wan_network()
+        with self.assertRaises(ProcessExecutionError):
+            self._check_password_auth("example.com")
+
+    def test_no_certs_wan(self):
+        """Unencrypted WAN access works (although this is dangerous)."""
+        self.postgres_container = docker(
+            "container", "run", "-d",
+            "--network", "lan",
+            "-e", "POSTGRES_DB=test_db",
+            "-e", "POSTGRES_PASSWORD=test_password",
+            "-e", "POSTGRES_USER=test_user",
+            "-e", "WAN_AUTH_METHOD=md5",
+            "-e", "WAN_CONNECTION=host",
+            self.image,
+        ).strip()
+        self._check_local_connection()
+        self._check_password_auth()
+        self._connect_wan_network()
+        with self.assertRaises(ProcessExecutionError):
+            self._check_password_auth("example.com")
+
+    def test_certs_falsy_lan(self):
+        """Configuration with falsy values for certs works fine."""
+        self.postgres_container = docker(
+            "container", "run", "-d",
+            "--network", "lan",
+            "-e", "POSTGRES_DB=test_db",
+            "-e", "POSTGRES_PASSWORD=test_password",
+            "-e", "POSTGRES_USER=test_user",
+            "-e", "CERTS={}".format(json.dumps({
+                "client.ca.cert.pem": False,
+                "server.cert.pem": False,
+                "server.key.pem": False,
+            })),
+            self.image,
+        ).strip()
+        self._check_local_connection()
+        self._check_password_auth()
+        self._connect_wan_network()
+        with self.assertRaises(ProcessExecutionError):
+            self._check_password_auth("example.com")
 
 
 if __name__ == "__main__":
