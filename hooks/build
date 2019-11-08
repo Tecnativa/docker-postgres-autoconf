@@ -1,17 +1,23 @@
-#!/usr/bin/env bash
-set -ex
+#!/usr/bin/env python3
+from plumbum import FG, local
+from plumbum.cmd import date, docker
 
 # Check environment variables are present
-test -n "$DOCKER_TAG"
+DOCKER_TAG = local.env["DOCKER_TAG"]
+COMMIT = local.env.get("GIT_SHA1", local.env.get("TRAVIS_COMMIT"))
+DATE = date("--rfc-3339", "ns")
 
-# Prepare build args
-commit="${GIT_SHA1:-$TRAVIS_COMMIT}"
-
-# To be configured via Docker Hub UI, all labels from postgres image targeting
-# this master branch
-time docker image build \
-    --build-arg VCS_REF="$commit" \
-    --build-arg BUILD_DATE="$(date --rfc-3339 ns)" \
-    --build-arg BASE_TAG="$DOCKER_TAG" \
-    --tag "tecnativa/postgres-autoconf:$DOCKER_TAG" \
-    .
+# Build image
+docker[
+    "image",
+    "build",
+    "--build-arg",
+    "VCS_REF={}".format(COMMIT),
+    "--build-arg",
+    "BUILD_DATE={}".format(DATE),
+    "--build-arg",
+    "BASE_TAG={}".format(DOCKER_TAG),
+    "--tag",
+    "tecnativa/postgres-autoconf:{}".format(DOCKER_TAG),
+    ".",
+] & FG

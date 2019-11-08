@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+from plumbum import FG, local
+from plumbum.cmd import docker
+
+REPO = local.env["DOCKER_REPO"]
+VERSION = local.env["DOCKER_TAG"]
+
+# Log all locally available images; will help to pin images
+docker["image", "ls", "--digests", REPO] & FG
+
+# Login in Docker Hub
+docker(
+    "login",
+    "--username",
+    local.env["DOCKER_HUB_USERNAME"],
+    "--password",
+    local.env["DOCKER_HUB_TOKEN"],
+)
+
+# Push built images
+versioned_image = "%s:%s" % (REPO, VERSION)
+docker["image", "push", versioned_image] & FG
+if VERSION == local.env.get("LATEST_RELEASE"):
+    latest_version = "alpine" if VERSION.endswith("-alpine") else "latest"
+    latest_image = "%s:%s" % (REPO, latest_version)
+    docker["image", "tag", versioned_image, latest_image] & FG
+    docker["image", "push", latest_image] & FG
