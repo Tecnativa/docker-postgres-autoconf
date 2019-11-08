@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import os
-import json
-import sys
-import netifaces
 import ipaddress
+import json
+import os
 import shutil
 import stat
-
+import sys
 from itertools import product
+
+import netifaces
 
 SUPPORTED_CERTS = {
     "ssl_ca_file": "client.ca.cert.pem",
@@ -85,53 +85,50 @@ for interface in netifaces.interfaces():
                 try:
                     # Format interface IP and netmask in common CIDR notation
                     cidr = ipaddress.ip_network(
-                        "{addr}/{netmask}".format(**address),
-                        False,
+                        "{addr}/{netmask}".format(**address), False
                     )
                 except ValueError:
                     continue
                 # Append line to pg_hba.conf, according to template
                 for user, db in product(LAN_USERS, LAN_DATABASES):
-                    hba_conf.append(LAN_HBA_TPL.format(
-                        connection=LAN_CONNECTION,
-                        db=db,
-                        user=user,
-                        cidr=cidr,
-                        meth=LAN_AUTH_METHOD,
-                    ))
+                    hba_conf.append(
+                        LAN_HBA_TPL.format(
+                            connection=LAN_CONNECTION,
+                            db=db,
+                            user=user,
+                            cidr=cidr,
+                            meth=LAN_AUTH_METHOD,
+                        )
+                    )
 
 # Generate WAN auth configuration
 if WAN_CONNECTION != "hostssl" or ssl_conf:
     for user, db, cidr in product(WAN_USERS, WAN_DATABASES, WAN_CIDRS):
-        hba_conf.append(WAN_HBA_TPL.format(
-            connection=WAN_CONNECTION,
-            db=db,
-            user=user,
-            cidr=cidr,
-            meth=WAN_AUTH_METHOD,
-        ))
+        hba_conf.append(
+            WAN_HBA_TPL.format(
+                connection=WAN_CONNECTION,
+                db=db,
+                user=user,
+                cidr=cidr,
+                meth=WAN_AUTH_METHOD,
+            )
+        )
 
 # Write postgres configuration files
 with open(CONF_FILE, "w") as conf_file:
-    conf_file.write(CONF_TPL.format(
-        conf_folder=CONF_FOLDER,
-        ssl_conf="\n".join(ssl_conf),
-        extra_conf=CONF_EXTRA,
-    ))
+    conf_file.write(
+        CONF_TPL.format(
+            conf_folder=CONF_FOLDER, ssl_conf="\n".join(ssl_conf), extra_conf=CONF_EXTRA
+        )
+    )
 permissions_fix(CONF_FILE)
 with open(HBA_FILE, "w") as conf_file:
-    conf_file.write(HBA_TPL.format(
-        extra_conf="\n".join(hba_conf),
-    ))
+    conf_file.write(HBA_TPL.format(extra_conf="\n".join(hba_conf)))
 permissions_fix(HBA_FILE)
 
 # Continue normal execution
 args = sys.argv[1:]
 if not args or args[0] == "postgres" or args[0].startswith("-"):
     # Need to go through parent image entrypoint, and hardcode conf file
-    args = [
-        "/docker-entrypoint.sh",
-        *args,
-        "-cconfig_file={}".format(CONF_FILE),
-    ]
+    args = ["/docker-entrypoint.sh", *args, "-cconfig_file={}".format(CONF_FILE)]
 os.execvp(args[0], args)

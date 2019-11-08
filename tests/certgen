@@ -43,4 +43,3 @@ openssl x509 -req -in client.csr.pem -text -days 3650 \
 chmod u=rw,go= *.pem
 # Delete CSR, no longer needed
 rm *.csr.pem
-
