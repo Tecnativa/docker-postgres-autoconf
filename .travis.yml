@@ -1,6 +1,4 @@
-dist: xenial
-
-sudo: required
+os: linux
 
 language: python
 
@@ -19,19 +17,42 @@ addons:
     packages:
       - docker-ce
 
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.cache/pre-commit
+
 branches:
   only:
     - master
 
+stages:
+  - name: lint
+  - name: test
+
 env:
-  matrix:
+  global:
+    - LATEST_RELEASE=11-alpine
+    - DOCKER_REPO=tecnativa/postgres-autoconf
+  jobs:
     - DOCKER_TAG=9.6-alpine
     - DOCKER_TAG=10-alpine
     - DOCKER_TAG=11-alpine
-    - DOCKER_TAG=alpine
+
+jobs:
+  include:
+    stage: lint
+    script:
+      - pre-commit run --all --show-diff-on-failure
 
 install:
   - pip install -r tests/ci-requirements.txt
 
 script:
   - ./tests/test.py -v
+
+deploy:
+  provider: script
+  script: ./hooks/push
+  on:
+    branch: master
