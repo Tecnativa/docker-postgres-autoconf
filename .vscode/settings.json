@@ -1,0 +1,13 @@
+{
+    "[python]": {
+        "editor.formatOnSave": true,
+    },
+    "editor.formatOnSaveTimeout": 2000,
+    "python.autoComplete.extraPaths": [
+        "./tests",
+    ],
+    "python.formatting.provider": "black",
+    "python.linting.flake8Enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.pythonPath": "python3",
+}

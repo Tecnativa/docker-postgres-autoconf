@@ -5,7 +5,7 @@ import time
 import unittest
 
 from plumbum import FG, local
-from plumbum.cmd import cat, docker
+from plumbum.cmd import cat, docker  # pylint: disable=import-error
 from plumbum.commands.processes import ProcessExecutionError
 
 # Make sure all paths are relative to tests dir
