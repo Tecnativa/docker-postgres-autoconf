@@ -32,12 +32,13 @@ stages:
 
 env:
   global:
-    - LATEST_RELEASE=11-alpine
+    - LATEST_RELEASE=12-alpine
     - DOCKER_REPO=tecnativa/postgres-autoconf
   jobs:
     - DOCKER_TAG=9.6-alpine
     - DOCKER_TAG=10-alpine
     - DOCKER_TAG=11-alpine
+    - DOCKER_TAG=12-alpine
 
 jobs:
   include:

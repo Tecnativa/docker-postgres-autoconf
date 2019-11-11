@@ -130,5 +130,9 @@ permissions_fix(HBA_FILE)
 args = sys.argv[1:]
 if not args or args[0] == "postgres" or args[0].startswith("-"):
     # Need to go through parent image entrypoint, and hardcode conf file
-    args = ["/docker-entrypoint.sh", *args, "-cconfig_file={}".format(CONF_FILE)]
+    args = [
+        "/usr/local/bin/docker-entrypoint.sh",
+        *args,
+        "-cconfig_file={}".format(CONF_FILE),
+    ]
 os.execvp(args[0], args)

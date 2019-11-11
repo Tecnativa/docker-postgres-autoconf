@@ -1,6 +1,7 @@
 ARG BASE_TAG
 FROM docker.io/postgres:${BASE_TAG}
 ENTRYPOINT [ "/autoconf-entrypoint" ]
+CMD []
 ENV CERTS="{}" \
     CONF_EXTRA="" \
     LAN_AUTH_METHOD=md5 \

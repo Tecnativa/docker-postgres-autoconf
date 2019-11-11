@@ -12,27 +12,36 @@ from plumbum.commands.processes import ProcessExecutionError
 local.cwd.chdir(os.path.dirname(__file__))
 certgen = local["./certgen"]
 
+# Helpers
+CONF_EXTRA = """-eCONF_EXTRA=
+log_connections = on
+log_min_messages = log
+"""
+
 
 class PostgresAutoconfCase(unittest.TestCase):
     """Test behavior for this docker image"""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         with local.cwd(local.cwd / ".."):
             print("Building image")
             local["./hooks/build"] & FG
+        cls.image = "tecnativa/postgres-autoconf:{}".format(local.env["DOCKER_TAG"])
+        cls.cert_files = {"client.ca.cert.pem", "server.cert.pem", "server.key.pem"}
+        return super().setUpClass()
+
+    def setUp(self):
         docker("network", "create", "lan")
         docker("network", "create", "wan")
-        self.version = os.environ["DOCKER_TAG"]
-        self.image = ("tecnativa/postgres-autoconf:{}".format(self.version),)
-        self.cert_files = {"client.ca.cert.pem", "server.cert.pem", "server.key.pem"}
         return super().setUp()
 
     def tearDown(self):
         try:
             print("Postgres container logs:")
             docker["container", "logs", self.postgres_container] & FG
-            docker["container", "stop", self.postgres_container] & FG
-            docker["container", "rm", self.postgres_container] & FG
+            docker("container", "stop", self.postgres_container)
+            docker("container", "rm", self.postgres_container)
         except AttributeError:
             pass  # No postgres daemon
         docker("network", "rm", "lan", "wan")
@@ -40,7 +49,7 @@ class PostgresAutoconfCase(unittest.TestCase):
 
     def _generate_certs(self):
         """Generate certificates for testing the image."""
-        certgen("example.com", "test_user")
+        certgen("example.localdomain", "test_user")
 
     def _check_local_connection(self):
         """Check that local connection works fine."""
@@ -105,7 +114,7 @@ class PostgresAutoconfCase(unittest.TestCase):
             ),
         )
 
-    def _connect_wan_network(self, alias="example.com"):
+    def _connect_wan_network(self, alias="example.localdomain"):
         """Bind a new network, to imitate WAN connections."""
         docker("network", "connect", "--alias", alias, "wan", self.postgres_container)
 
@@ -131,12 +140,13 @@ class PostgresAutoconfCase(unittest.TestCase):
                 "PGSSLROOTCERT=/certs/server.ca.cert.pem",
                 "-e",
                 "PGUSER=test_user",
+                CONF_EXTRA,
                 "-v",
                 "{}:/certs".format(local.cwd),
                 self.image,
                 "psql",
                 "--host",
-                "example.com",
+                "example.localdomain",
                 "--command",
                 "SELECT 1",
                 "--no-align",
@@ -164,6 +174,7 @@ class PostgresAutoconfCase(unittest.TestCase):
                     "POSTGRES_PASSWORD=test_password",
                     "-e",
                     "POSTGRES_USER=test_user",
+                    CONF_EXTRA,
                     self.image,
                 ).strip()
                 self._check_local_connection()
@@ -196,6 +207,7 @@ class PostgresAutoconfCase(unittest.TestCase):
                     "POSTGRES_PASSWORD=test_password",
                     "-e",
                     "POSTGRES_USER=test_user",
+                    CONF_EXTRA,
                     *cert_vols,
                     self.image,
                 ).strip()
@@ -218,13 +230,14 @@ class PostgresAutoconfCase(unittest.TestCase):
             "POSTGRES_PASSWORD=test_password",
             "-e",
             "POSTGRES_USER=test_user",
+            CONF_EXTRA,
             self.image,
         ).strip()
         self._check_local_connection()
         self._check_password_auth()
         self._connect_wan_network()
         with self.assertRaises(ProcessExecutionError):
-            self._check_password_auth("example.com")
+            self._check_password_auth("example.localdomain")
 
     def test_no_certs_wan(self):
         """Unencrypted WAN access works (although this is dangerous)."""
@@ -244,13 +257,14 @@ class PostgresAutoconfCase(unittest.TestCase):
             "WAN_AUTH_METHOD=md5",
             "-e",
             "WAN_CONNECTION=host",
+            CONF_EXTRA,
             self.image,
         ).strip()
         self._check_local_connection()
         self._check_password_auth()
         self._connect_wan_network()
         with self.assertRaises(ProcessExecutionError):
-            self._check_password_auth("example.com")
+            self._check_password_auth("example.localdomain")
 
     def test_certs_falsy_lan(self):
         """Configuration with falsy values for certs works fine."""
@@ -266,6 +280,7 @@ class PostgresAutoconfCase(unittest.TestCase):
             "POSTGRES_PASSWORD=test_password",
             "-e",
             "POSTGRES_USER=test_user",
+            CONF_EXTRA,
             "-e",
             "CERTS={}".format(
                 json.dumps(
@@ -282,7 +297,7 @@ class PostgresAutoconfCase(unittest.TestCase):
         self._check_password_auth()
         self._connect_wan_network()
         with self.assertRaises(ProcessExecutionError):
-            self._check_password_auth("example.com")
+            self._check_password_auth("example.localdomain")
 
 
 if __name__ == "__main__":
