@@ -22,6 +22,7 @@ RUN apk add --no-cache python3 \
 RUN apk add --no-cache -t .build \
         build-base \
         linux-headers \
+        py3-pip \
         python3-dev \
     && pip3 install --no-cache-dir \
         netifaces \
