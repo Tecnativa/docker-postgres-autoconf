@@ -22,7 +22,7 @@ docker(
 
 # Push built images
 local_image = "%s:%s" % (REPO, VERSION)
-public_image = "%s/%s%s" % (REGISTRY, local_image, SUFFIX)
+public_image = "%s/%s%s:%s" % (REGISTRY, REPO, SUFFIX, VERSION)
 docker["image", "tag", local_image, public_image]
 docker["image", "push", public_image] & FG
 if VERSION == local.env.get("LATEST_RELEASE"):
