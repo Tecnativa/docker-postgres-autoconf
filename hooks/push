@@ -2,7 +2,9 @@
 from plumbum import FG, local
 from plumbum.cmd import docker
 
+REGISTRY = local.env.get("REGISTRY_HOST", "docker.io")
 REPO = local.env["DOCKER_REPO"]
+SUFFIX = local.env.get("DOCKER_REPO_SUFFIX", "")
 VERSION = local.env["DOCKER_TAG"]
 
 # Log all locally available images; will help to pin images
@@ -15,13 +17,16 @@ docker(
     local.env["DOCKER_HUB_USERNAME"],
     "--password",
     local.env["DOCKER_HUB_TOKEN"],
+    REGISTRY,
 )
 
 # Push built images
-versioned_image = "%s:%s" % (REPO, VERSION)
-docker["image", "push", versioned_image] & FG
+local_image = "%s:%s" % (REPO, VERSION)
+public_image = "%s/%s%s" % (REGISTRY, local_image, SUFFIX)
+docker["image", "tag", local_image, public_image]
+docker["image", "push", public_image] & FG
 if VERSION == local.env.get("LATEST_RELEASE"):
     latest_version = "alpine" if VERSION.endswith("-alpine") else "latest"
-    latest_image = "%s:%s" % (REPO, latest_version)
-    docker["image", "tag", versioned_image, latest_image] & FG
-    docker["image", "push", latest_image] & FG
+    public_image = "%s/%s%s:%s" % (REGISTRY, REPO, SUFFIX, latest_version)
+    docker["image", "tag", local_image, public_image] & FG
+    docker["image", "push", public_image] & FG
