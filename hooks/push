@@ -14,9 +14,9 @@ docker["image", "ls", "--digests", REPO] & FG
 docker(
     "login",
     "--username",
-    local.env["DOCKER_HUB_USERNAME"],
+    local.env["REGISTRY_USERNAME"],
     "--password",
-    local.env["DOCKER_HUB_TOKEN"],
+    local.env["REGISTRY_TOKEN"],
     REGISTRY,
 )
 
