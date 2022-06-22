@@ -34,6 +34,7 @@ jobs:
       matrix:
         # Test modern Odoo versions with latest Postgres version
         pg_version:
+          - "14"
           - "13"
           - "12"
           - "11"
