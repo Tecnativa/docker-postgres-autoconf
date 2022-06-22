@@ -55,7 +55,7 @@ jobs:
       # Build images
       - run: ./hooks/build
       # Test
-      - run: ./tests/test.py -v
+      - run: python -m unittest tests.test -v
       # Push
       - name: push to docker hub
         if: github.repository == 'Tecnativa/docker-postgres-autoconf' && github.ref == 'refs/heads/master'

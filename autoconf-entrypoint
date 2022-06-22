@@ -30,6 +30,9 @@ WAN_DATABASES = json.loads(os.environ["WAN_DATABASES"])
 WAN_HBA_TPL = os.environ["WAN_HBA_TPL"]
 WAN_TLS = json.loads(os.environ["WAN_TLS"])
 WAN_USERS = json.loads(os.environ["WAN_USERS"])
+PGSSLCERT = os.environ.get("PGSSLCERT")
+PGSSLKEY = os.environ.get("PGSSLKEY")
+PGSSLROOTCERT = os.environ.get("PGSSLROOTCERT")
 
 # Configuration file templates
 CONF_FOLDER = "/etc/postgres"
@@ -56,23 +59,29 @@ hba_conf = []
 ssl_conf = []
 
 
-def permissions_fix(filename):
+def permissions_fix(filename, client=False):
     """Make :param:`filename` be owned by root user and postgres group."""
     shutil.chown(filename, "root", "postgres")
-    os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
+    if client:
+        os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR)
+    else:
+        os.chmod(filename, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
 
 
 # Configure TLS
-for key, filename in SUPPORTED_CERTS.items():
-    full_path = os.path.join(CONF_FOLDER, filename)
+for key, filen in SUPPORTED_CERTS.items():
+    full_path = os.path.join(CONF_FOLDER, filen)
     # Write PEM file if it came from env variable
-    if not os.path.exists(full_path) and CERTS.get(filename):
+    if not os.path.exists(full_path) and CERTS.get(filen):
         with open(full_path, "w") as cert_file:
-            cert_file.write(CERTS[filename])
+            cert_file.write(CERTS[filen])
     if os.path.exists(full_path):
         # Enable file in postgres configuration
         ssl_conf.append("{} = '{}'".format(key, full_path))
         permissions_fix(full_path)
+for filen in (PGSSLCERT, PGSSLKEY, PGSSLROOTCERT):
+    if filen and os.path.exists(filen):
+        permissions_fix(filen, client=True)
 
 if ssl_conf:
     ssl_conf.append("ssl = on")
