@@ -8,16 +8,19 @@ COMMIT = local.env.get("GIT_SHA1")
 DATE = date("--rfc-3339", "ns")
 
 # Build image
-docker[
-    "image",
-    "build",
-    "--build-arg",
-    "VCS_REF={}".format(COMMIT),
-    "--build-arg",
-    "BUILD_DATE={}".format(DATE),
-    "--build-arg",
-    "BASE_TAG={}".format(DOCKER_TAG),
-    "--tag",
-    "tecnativa/postgres-autoconf:{}".format(DOCKER_TAG),
-    ".",
-] & FG
+(
+    docker[
+        "image",
+        "build",
+        "--build-arg",
+        "VCS_REF={}".format(COMMIT),
+        "--build-arg",
+        "BUILD_DATE={}".format(DATE),
+        "--build-arg",
+        "BASE_TAG={}".format(DOCKER_TAG),
+        "--tag",
+        "tecnativa/postgres-autoconf:{}".format(DOCKER_TAG),
+        ".",
+    ]
+    & FG
+)
