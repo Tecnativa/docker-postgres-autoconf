@@ -24,9 +24,6 @@ class PostgresAutoconfCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with local.cwd(local.cwd / ".."):
-            print("Building image")
-            local["./hooks/build"] & FG
         cls.image = f"tecnativa/postgres-autoconf:{local.env['DOCKER_TAG']}"
         cls.cert_files = ("client.ca.cert.pem", "server.cert.pem", "server.key.pem")
         return super().setUpClass()

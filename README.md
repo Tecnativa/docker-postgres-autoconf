@@ -1,11 +1,5 @@
 # PostgreSQL Auto-Conf
 
-[![Build Status](https://travis-ci.org/Tecnativa/docker-postgres-autoconf.svg?branch=master)](https://travis-ci.org/Tecnativa/docker-postgres-autoconf)
-[![Docker Pulls](https://img.shields.io/docker/pulls/tecnativa/postgres-autoconf.svg)](https://hub.docker.com/r/tecnativa/postgres-autoconf)
-[![Layers](https://images.microbadger.com/badges/image/tecnativa/postgres-autoconf.svg)](https://microbadger.com/images/tecnativa/postgres-autoconf)
-[![Commit](https://images.microbadger.com/badges/commit/tecnativa/postgres-autoconf.svg)](https://microbadger.com/images/tecnativa/postgres-autoconf)
-[![License](https://img.shields.io/github/license/Tecnativa/docker-postgres-autoconf.svg)](https://github.com/Tecnativa/docker-postgres-autoconf/blob/master/LICENSE)
-
 ## What
 
 Image that configures Postgres before starting it.
@@ -104,5 +98,3 @@ Wether to enable or not TLS in WAN connections.
 #### `WAN_USERS`
 
 Users allowed to connect from WAN.
-
-[`Dockerfile`]: https://github.com/Tecnativa/docker-postgres-autoconf/blob/master/Dockerfile
