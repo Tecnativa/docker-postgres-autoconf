@@ -2,6 +2,7 @@ name: ci
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches:
       - master
@@ -28,12 +29,11 @@ jobs:
 
   build-test-push:
     runs-on: ubuntu-latest
-    needs: pre-commit
     strategy:
       fail-fast: false
       matrix:
-        # Test modern Odoo versions with latest Postgres version
         pg_version:
+          - "16"
           - "15"
           - "14"
           - "13"
@@ -41,34 +41,68 @@ jobs:
           - "11"
           - "10"
           - "9.6"
+        platform:
+          - "amd64"
+          - "arm64"
+
     env:
-      # Indicates what's the equivalent to tecnativa/postgres-autoconf:latest image
-      LATEST_RELEASE: "15-alpine"
-      # Variables found by default in Docker Hub builder
-      DOCKER_REPO: tecnativa/postgres-autoconf
-      DOCKER_TAG: ${{ matrix.pg_version }}-alpine
-      GIT_SHA1: ${{ github.sha }}
+      PG_LATEST: "16"
     steps:
-      # Prepare
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v1
-      - run: pip install -r tests/ci-requirements.txt
-      # Build images
-      - run: ./hooks/build
-      # Test
-      - run: python -m unittest tests.test -v
-      # Push
-      - name: push to docker hub
-        if: github.repository == 'Tecnativa/docker-postgres-autoconf' && github.ref == 'refs/heads/master'
-        env:
-          REGISTRY_HOST: docker.io
-          REGISTRY_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_LOGIN }}
-        run: ./hooks/push
-      - name: push to github registry
-        if: github.repository == 'Tecnativa/docker-postgres-autoconf' && github.ref == 'refs/heads/master'
-        env:
-          REGISTRY_HOST: ghcr.io
-          REGISTRY_TOKEN: ${{ secrets.BOT_TOKEN }}
-          REGISTRY_USERNAME: ${{ secrets.BOT_LOGIN }}
-        run: ./hooks/push
+      - uses: actions/checkout@v4
+
+      - name: Set up python
+        uses: actions/setup-python@v1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        if: matrix.platform != 'amd64'
+        with:
+          platforms: ${{ matrix.platform }}
+
+      - name: Get build date
+        id: date
+        run: echo "date=$(date --rfc-3339 ns)" >> $GITHUB_OUTPUT
+
+      - name: Get latest tag
+        id: tag-latest
+        if: matrix.pg_version == env.PG_LATEST
+        run: echo "tag=${{ matrix.platform == 'amd64' && ' latest' || format(' latest-{0}', matrix.platform) }}" >> $GITHUB_OUTPUT
+
+      - name: Build image
+        id: build
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: postgres-autoconf
+          tags: ${{ matrix.platform == 'amd64' && format('{0}-alpine', matrix.pg_version) || format('{0}-alpine-{1}', matrix.pg_version, matrix.platform) }}${{ steps.tag-latest.outputs.tag || '' }}
+          context: .
+          platforms: linux/${{ matrix.platform }}
+          containerfiles: |
+            Dockerfile
+          build-args: |
+            BUILD_DATE=${{ steps.date.outputs.date }}
+            VCS_REF=${{ github.sha }}
+            BASE_TAG=${{ matrix.pg_version }}-alpine
+
+      - name: Install requirements for testing
+        run: pip install -r tests/ci-requirements.txt
+
+      - name: Run unit tests
+        run: python -m unittest tests.test -v
+
+      - name: Push image to Docker Hub
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: docker.io/tecnativa
+          username: ${{ secrets.DOCKERHUB_LOGIN }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image to GHCR
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
+          registry: ghcr.io/Tecnativa
+          username: ${{ github.BOT_LOGIN }}
+          password: ${{ secrets.BOT_TOKEN }}

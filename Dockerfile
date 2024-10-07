@@ -19,14 +19,7 @@ ENV CERTS="{}" \
 RUN apk add --no-cache python3 \
     && mkdir -p /etc/postgres \
     && chmod a=rwx /etc/postgres
-RUN apk add --no-cache -t .build \
-        build-base \
-        linux-headers \
-        py3-pip \
-        python3-dev \
-    && pip3 install --no-cache-dir \
-        netifaces \
-    && apk del .build
+RUN apk add --no-cache py3-netifaces
 COPY autoconf-entrypoint /
 
 # Metadata
