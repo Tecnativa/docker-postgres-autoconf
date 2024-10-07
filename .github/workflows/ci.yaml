@@ -34,6 +34,7 @@ jobs:
       matrix:
         # Test modern Odoo versions with latest Postgres version
         pg_version:
+          - "16"
           - "15"
           - "14"
           - "13"
@@ -43,7 +44,7 @@ jobs:
           - "9.6"
     env:
       # Indicates what's the equivalent to tecnativa/postgres-autoconf:latest image
-      LATEST_RELEASE: "15-alpine"
+      LATEST_RELEASE: "16-alpine"
       # Variables found by default in Docker Hub builder
       DOCKER_REPO: tecnativa/postgres-autoconf
       DOCKER_TAG: ${{ matrix.pg_version }}-alpine
