@@ -33,6 +33,7 @@ WAN_USERS = json.loads(os.environ["WAN_USERS"])
 PGSSLCERT = os.environ.get("PGSSLCERT")
 PGSSLKEY = os.environ.get("PGSSLKEY")
 PGSSLROOTCERT = os.environ.get("PGSSLROOTCERT")
+HBA_EXTRA_RULES = os.environ.get("HBA_EXTRA_RULES", "")
 
 # Configuration file templates
 CONF_FOLDER = "/etc/postgres"
@@ -86,6 +87,17 @@ for filen in (PGSSLCERT, PGSSLKEY, PGSSLROOTCERT):
 if ssl_conf:
     ssl_conf.append("ssl = on")
 
+# Parse extra rules for pg_hba.conf
+extra_hba_rules = []
+if HBA_EXTRA_RULES:
+    try:
+        extra_hba_rules = json.loads(HBA_EXTRA_RULES)
+        if not isinstance(extra_hba_rules, list):
+            raise ValueError("HBA_EXTRA_RULES must be a JSON array")
+    except json.JSONDecodeError:
+        print("Invalid JSON in HBA_EXTRA_RULES", file=sys.stderr)
+        sys.exit(1)
+
 # Generate LAN auth configuration
 for interface in netifaces.interfaces():
     for type_, addresses in netifaces.ifaddresses(interface).items():
@@ -122,6 +134,13 @@ if WAN_CONNECTION != "hostssl" or ssl_conf:
                 meth=WAN_AUTH_METHOD,
             )
         )
+
+# Append extra rules to hba_conf
+for rule in extra_hba_rules:
+    if not isinstance(rule, str):
+        print("Each rule in HBA_EXTRA_RULES must be a string", file=sys.stderr)
+        sys.exit(1)
+    hba_conf.append(rule)
 
 # Write postgres configuration files
 with open(CONF_FILE, "w") as conf_file:

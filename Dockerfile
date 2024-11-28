@@ -15,7 +15,8 @@ ENV CERTS="{}" \
     WAN_DATABASES='["all"]' \
     WAN_HBA_TPL="{connection} {db} {user} {cidr} {meth}" \
     WAN_TLS=1 \
-    WAN_USERS='["all"]'
+    WAN_USERS='["all"]' \
+    HBA_EXTRA_RULES=""
 RUN apk add --no-cache python3 \
     && mkdir -p /etc/postgres \
     && chmod a=rwx /etc/postgres
