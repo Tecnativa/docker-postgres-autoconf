@@ -105,4 +105,17 @@ Wether to enable or not TLS in WAN connections.
 
 Users allowed to connect from WAN.
 
+#### `HBA_EXTRA_RULES`
+
+JSON array of additional pg_hba.conf rules to append. Each array element should be a string representing a valid pg_hba.conf line.
+
+Example HBA_EXTRA_RULES format in an .env file:
+
+HBA_EXTRA_RULES=["host all all 192.168.1.0/24 md5", "hostssl mydb myuser 10.0.0.0/8 scram-sha-256"]
+
+This adds the following lines to pg_hba.conf:
+
+host all all 192.168.1.0/24 md5
+hostssl mydb myuser 10.0.0.0/8 scram-sha-256
+
 [`Dockerfile`]: https://github.com/Tecnativa/docker-postgres-autoconf/blob/master/Dockerfile

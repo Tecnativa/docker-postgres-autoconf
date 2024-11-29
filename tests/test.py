@@ -299,6 +299,48 @@ class PostgresAutoconfCase(unittest.TestCase):
         with self.assertRaises(ProcessExecutionError):
             self._check_password_auth("example.localdomain")
 
+    def test_hba_extra_rules_added(self):
+        """Test that HBA_EXTRA_RULES lines are added to pg_hba.conf."""
+        if "9.6" in self.image:
+            self.skipTest("HBA_EXTRA_RULES not supported in PostgreSQL 9.6")
+        # Define custom HBA rules
+        hba_extra_rules = [
+            "host test_db custom_user 0.0.0.0/0 trust",
+            "hostssl all all 192.168.0.0/16 md5",
+        ]
+
+        # Start the Postgres container with HBA_EXTRA_RULES
+        self.postgres_container = docker(
+            "run",
+            "-d",
+            "--name",
+            "postgres_test_hba_extra_rules",
+            "--network",
+            "lan",
+            "-e",
+            "POSTGRES_DB=test_db",
+            "-e",
+            "POSTGRES_USER=test_user",
+            "-e",
+            "POSTGRES_PASSWORD=test_password",
+            "-e",
+            "HBA_EXTRA_RULES=" + json.dumps(hba_extra_rules),
+            CONF_EXTRA,
+            self.image,
+        ).strip()
+
+        # Give the container some time to initialize
+        time.sleep(10)
+
+        # Read the pg_hba.conf file content from the container
+        hba_conf = docker(
+            "exec", self.postgres_container, "cat", "/etc/postgres/pg_hba.conf"
+        ).strip()
+
+        # Check that each rule in hba_extra_rules is present in the file
+        for rule in hba_extra_rules:
+            self.assertIn(rule, hba_conf)
+
 
 if __name__ == "__main__":
     unittest.main()
