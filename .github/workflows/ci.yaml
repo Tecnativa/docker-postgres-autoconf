@@ -16,10 +16,8 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
       - name: Set PY
-        run:
-          echo "PY=$(python -c 'import hashlib,
-          sys;print(hashlib.sha256(sys.version.encode()+sys.executable.encode()).hexdigest())')"
-          >> $GITHUB_ENV
+        run: |
+          echo "PY=$(python -c 'import hashlib,sys;print(hashlib.sha256(sys.version.encode()+sys.executable.encode()).hexdigest())')" >> $GITHUB_ENV
       - uses: actions/cache@v1
         with:
           path: ~/.cache/pre-commit
@@ -32,7 +30,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Test modern Odoo versions with latest Postgres version
         pg_version:
           - "16"
           - "15"
@@ -45,29 +42,39 @@ jobs:
     env:
       # Indicates what's the equivalent to tecnativa/postgres-autoconf:latest image
       LATEST_RELEASE: "16-alpine"
-      # Variables found by default in Docker Hub builder
       DOCKER_REPO: tecnativa/postgres-autoconf
       DOCKER_TAG: ${{ matrix.pg_version }}-alpine
       GIT_SHA1: ${{ github.sha }}
+      IS_PR: ${{ github.event_name == 'pull_request' }}
     steps:
-      # Prepare
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v1
       - run: pip install -r tests/ci-requirements.txt
+
       # Build images
       - run: ./hooks/build
       # Test
       - run: python -m unittest tests.test -v
+      - name: Set Docker Tag
+        run: |
+          if [ "${{ env.IS_PR }}" = "true" ]; then
+            echo "DOCKER_TAG=${{ matrix.pg_version }}-test-pr${{ github.event.number }}" >> $GITHUB_ENV
+          else
+            echo "DOCKER_TAG=${{ matrix.pg_version }}-alpine" >> $GITHUB_ENV
+          fi
+      - name: Tag Docker Image for PR
+        if: env.IS_PR
+        run: docker tag ${{ env.DOCKER_REPO }}:${{ matrix.pg_version }}-alpine ${{ env.DOCKER_REPO }}:${{ env.DOCKER_TAG }}
       # Push
-      - name: push to docker hub
-        if: github.repository == 'Tecnativa/docker-postgres-autoconf' && github.ref == 'refs/heads/master'
+      - name: Push Docker Image to Docker Hub
+        if: github.repository == 'Tecnativa/docker-postgres-autoconf' && (env.IS_PR || github.ref == 'refs/heads/master')
         env:
           REGISTRY_HOST: docker.io
           REGISTRY_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_LOGIN }}
         run: ./hooks/push
-      - name: push to github registry
-        if: github.repository == 'Tecnativa/docker-postgres-autoconf' && github.ref == 'refs/heads/master'
+      - name: Push Docker Image to GitHub Registry
+        if: github.repository == 'Tecnativa/docker-postgres-autoconf' && (env.IS_PR || github.ref == 'refs/heads/master')
         env:
           REGISTRY_HOST: ghcr.io
           REGISTRY_TOKEN: ${{ secrets.BOT_TOKEN }}
