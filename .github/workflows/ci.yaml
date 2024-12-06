@@ -31,6 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         pg_version:
+          - "17"
           - "16"
           - "15"
           - "14"
@@ -41,7 +42,7 @@ jobs:
           - "9.6"
     env:
       # Indicates what's the equivalent to tecnativa/postgres-autoconf:latest image
-      LATEST_RELEASE: "16-alpine"
+      LATEST_RELEASE: "17-alpine"
       DOCKER_REPO: tecnativa/postgres-autoconf
       DOCKER_TAG: ${{ matrix.pg_version }}-alpine
       GIT_SHA1: ${{ github.sha }}
