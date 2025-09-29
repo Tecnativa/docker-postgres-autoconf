@@ -17,10 +17,12 @@ ENV CERTS="{}" \
     WAN_TLS=1 \
     WAN_USERS='["all"]' \
     HBA_EXTRA_RULES=""
-RUN apk add --no-cache python3 \
-    && mkdir -p /etc/postgres \
-    && chmod a=rwx /etc/postgres
-RUN apk add --no-cache py3-netifaces
+RUN apk add --no-cache python3 py3-netifaces \
+ && if [ "${PG_MAJOR:-0}" -ge 12 ]; then \
+        apk add --no-cache postgresql-pgvector; \
+    fi \
+ && mkdir -p /etc/postgres \
+ && chmod a=rwx /etc/postgres
 COPY autoconf-entrypoint /
 
 # Metadata
