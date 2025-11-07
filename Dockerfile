@@ -20,6 +20,8 @@ ENV CERTS="{}" \
 RUN apk add --no-cache python3 py3-netifaces \
  && if [ "${PG_MAJOR:-0}" -ge 12 ]; then \
         apk add --no-cache postgresql-pgvector; \
+        cp /usr/share/postgresql/extension/vector* /usr/local/share/postgresql/extension/; \
+        cp /usr/lib/postgresql17/vector.so /usr/local/lib/postgresql/; \
     fi \
  && mkdir -p /etc/postgres \
  && chmod a=rwx /etc/postgres
