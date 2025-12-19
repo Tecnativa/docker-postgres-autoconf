@@ -1,4 +1,5 @@
 ARG BASE_TAG
+ARG PGVECTOR_VERSION=0.8.1
 FROM docker.io/postgres:${BASE_TAG}
 ENTRYPOINT [ "/autoconf-entrypoint" ]
 CMD []
@@ -19,12 +20,18 @@ ENV CERTS="{}" \
     HBA_EXTRA_RULES=""
 RUN apk add --no-cache python3 py3-netifaces \
  && if [ "${PG_MAJOR:-0}" -ge 12 ]; then \
-        apk add --no-cache postgresql-pgvector; \
-        cp /usr/share/postgresql/extension/vector* /usr/local/share/postgresql/extension/; \
-        cp /usr/lib/postgresql17/vector.so /usr/local/lib/postgresql/; \
+        apk add --no-cache --virtual .pgvector-build build-base linux-headers ca-certificates; \
+        wget -qO- "https://github.com/pgvector/pgvector/archive/refs/tags/v${PGVECTOR_VERSION}.tar.gz" \
+          | tar -xz -C /tmp; \
+        cd "/tmp/pgvector-${PGVECTOR_VERSION}" \
+          && make PG_CONFIG=/usr/local/bin/pg_config \
+          && make install PG_CONFIG=/usr/local/bin/pg_config; \
+        cd / && rm -rf "/tmp/pgvector-${PGVECTOR_VERSION}"; \
+        apk del .pgvector-build; \
     fi \
  && mkdir -p /etc/postgres \
  && chmod a=rwx /etc/postgres
+
 COPY autoconf-entrypoint /
 
 # Metadata
