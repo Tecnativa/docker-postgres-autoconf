@@ -20,7 +20,12 @@ ENV CERTS="{}" \
     HBA_EXTRA_RULES=""
 RUN apk add --no-cache python3 py3-netifaces \
  && if [ "${PG_MAJOR:-0}" -ge 12 ]; then \
-        apk add --no-cache --virtual .pgvector-build build-base linux-headers ca-certificates; \
+        apk add --no-cache --virtual .pgvector-build \
+            build-base \
+            linux-headers \
+            ca-certificates \
+            clang19 \
+            llvm19; \
         wget -qO- "https://github.com/pgvector/pgvector/archive/refs/tags/v${PGVECTOR_VERSION}.tar.gz" \
           | tar -xz -C /tmp; \
         cd "/tmp/pgvector-${PGVECTOR_VERSION}" \
