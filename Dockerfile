@@ -27,7 +27,7 @@ RUN apk add --no-cache python3 py3-netifaces \
         wget -qO- "https://github.com/pgvector/pgvector/archive/refs/tags/v${PGVECTOR_VERSION}.tar.gz" \
           | tar -xz -C /tmp; \
         cd "/tmp/pgvector-${PGVECTOR_VERSION}" \
-          && make $(if [ "$(uname -m)" = "x86_64" ]; then echo 'CFLAGS=-march=x86-64-v2'; fi) PG_CONFIG=/usr/local/bin/pg_config \
+          && make OPTFLAGS="" PG_CONFIG=/usr/local/bin/pg_config \
           && make install PG_CONFIG=/usr/local/bin/pg_config; \
         cd / && rm -rf "/tmp/pgvector-${PGVECTOR_VERSION}"; \
         apk del .pgvector-build; \
